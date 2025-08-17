@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rumbo - Tu Mascota Virtual</title>
+    
+    <!-- PWA Meta tags -->
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="Rumbo es tu mascota virtual que vive en tu pantalla">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS Meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rumbo">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Nombre del perro en el fondo */
+        .dog-name {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 15vw;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            z-index: 1;
+            user-select: none;
+            pointer-events: none;
+            letter-spacing: 0.1em;
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90vw;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            padding: 12px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+            user-select: none;
+            min-width: 60px;
+        }
+
+        button:hover, button:active {
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0px);
+        }
+
+        /* Adaptaciones para móvil */
+        @media (max-width: 768px) {
+            button {
+                font-size: 12px;
+                padding: 10px 12px;
+            }
+            
+            .dog-name {
+                font-size: 20vw;
+            }
+        }
+
+        #dog {
+            position: fixed;
+            width: 48px;
+            height: 32px;
+            z-index: 10000;
+            display: none;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        /* Cursor de arrastre solo cuando está sentado */
+        #dog.dog-sitting {
+            cursor: grab;
+        }
+
+        #dog.dog-sitting:active {
+            cursor: grabbing;
+        }
+
+        #dog.dog-sitting.dragging {
+            cursor: grabbing;
+        }
+
+        /* Cuerpo del perro - estilo Minecraft */
+        .dog-body {
+            position: absolute;
+            width: 32px;
+            height: 16px;
+            background: #D2B48C;
+            top: 8px;
+            left: 8px;
+            border: 1px solid #8B7355;
+        }
+
+        /* Cabeza del perro */
+        .dog-head {
+            position: absolute;
+            width: 20px;
+            height: 16px;
+            background: #D2B48C;
+            top: 0px;
+            left: 0px;
+            border: 1px solid #8B7355;
+        }
+
+        /* Hocico */
+        .dog-snout {
+            position: absolute;
+            width: 8px;
+            height: 6px;
+            background: #C19A6B;
+            top: 6px;
+            left: -8px;
+            border: 1px solid #8B7355;
+        }
+
+        /* Orejas */
+        .dog-ear-left {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #8B4513;
+            top: -2px;
+            left: 2px;
+            border: 1px solid #654321;
+        }
+
+        .dog-ear-right {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #8B4513;
+            top: -2px;
+            right: 2px;
+            border: 1px solid #654321;
+        }
+
+        /* Ojos */
+        .dog-eyes {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 2px;
+            height: 2px;
+            background: #000;
+            box-shadow: 8px 0 0 #000;
+        }
+
+        /* Nariz */
+        .dog-nose {
+            position: absolute;
+            top: 8px;
+            left: -6px;
+            width: 2px;
+            height: 2px;
+            background: #000;
+        }
+
+        /* Patas */
+        .dog-legs {
+            position: absolute;
+            bottom: -8px;
+            left: 10px;
+            width: 4px;
+            height: 8px;
+            background: #D2B48C;
+            border: 1px solid #8B7355;
+            box-shadow: 8px 0 0 #D2B48C, 8px 0 0 1px #8B7355, 16px 0 0 #D2B48C, 16px 0 0 1px #8B7355, 24px 0 0 #D2B48C, 24px 0 0 1px #8B7355;
+        }
+
+        /* Cola */
+        .dog-tail {
+            position: absolute;
+            top: 10px;
+            right: -6px;
+            width: 6px;
+            height: 4px;
+            background: #8B4513;
+            border: 1px solid #654321;
+            transform-origin: left center;
+            animation: wag 0.6s infinite alternate ease-in-out;
+        }
+
+        @keyframes wag {
+            0% { transform: rotate(-10deg); }
+            100% { transform: rotate(10deg); }
+        }
+
+        /* Animación de caminar más suave */
+        .dog-walking .dog-legs {
+            animation: walk 0.8s infinite alternate ease-in-out;
+        }
+
+        /* Estado sentado */
+        .dog-sitting .dog-body {
+            height: 20px;
+            top: 4px;
+        }
+
+        .dog-sitting .dog-legs {
+            display: none;
+        }
+
+        @keyframes walk {
+            0% { transform: translateX(0px); }
+            100% { transform: translateX(1px); }
+        }
+
+        .paw-prints {
+            position: fixed;
+            width: 15px;
+            height: 15px;
+            background: rgba(139, 69, 19, 0.4);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            z-index: 9999;
+            pointer-events: none;
+            animation: fadeOut 4s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 0.6; }
+            100% { opacity: 0; }
+        }
+
+        /* Hueso para comer */
+        .bone {
+            position: fixed;
+            width: 24px;
+            height: 16px;
+            z-index: 9998;
+            pointer-events: none;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-3px); }
+        }
+
+        /* Corazoncitos de agradecimiento */
+        .heart {
+            position: fixed;
+            font-size: 16px;
+            color: #ff69b4;
+            z-index: 9999;
+            pointer-events: none;
+            user-select: none;
+            animation: floatUp 2s forwards;
+        }
+
+        @keyframes floatUp {
+            0% { 
+                opacity: 1; 
+                transform: translateY(0px) scale(0.5);
+            }
+            50% { 
+                opacity: 1; 
+                transform: translateY(-20px) scale(1);
+            }
+            100% { 
+                opacity: 0; 
+                transform: translateY(-40px) scale(1.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dog-name">RUMBO</div>
+    
+    <div class="controls">
+        <button onclick="toggleDog()">🐕 Liberar/Quitar Perro</button>
+        <button onclick="callDog()">📢 Llamar Perro</button>
+        <button onclick="toggleSit()">🪑 Sentarse/Levantarse</button>
+        <button onclick="feedDog()">🦴 Dar de Comer</button>
+    </div>
+
+    <div id="dog">
+        <div class="dog-head">
+            <div class="dog-ear-left"></div>
+            <div class="dog-ear-right"></div>
+            <div class="dog-eyes"></div>
+            <div class="dog-snout">
+                <div class="dog-nose"></div>
+            </div>
+        </div>
+        <div class="dog-body"></div>
+        <div class="dog-legs"></div>
+        <div class="dog-tail"></div>
+    </div>
+
+    <script>
+        let dogActive = false;
+        let dogX = 200;
+        let dogY = 200;
+        let targetX = 400;
+        let targetY = 400;
+        let followingCursor = false;
+        let isSitting = false;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let mouseX = 0;
+        let mouseY = 0;
+        let goingToBone = false;
+        let currentBone = null;
+
+        const dogElement = document.getElementById('dog');
+
+        function toggleDog() {
+            if (dogActive) {
+                // Quitar perro
+                dogActive = false;
+                isSitting = false;
+                dogElement.style.display = 'none';
+                dogElement.classList.remove('dog-walking', 'dog-sitting');
+            } else {
+                // Liberar perro
+                dogActive = true;
+                isSitting = false;
+                followingCursor = false;
+                goingToBone = false;
+                
+                // Limpiar hueso existente si lo hay
+                if (currentBone) {
+                    currentBone.parentNode.removeChild(currentBone);
+                    currentBone = null;
+                }
+                
+                dogElement.style.display = 'block';
+                dogElement.classList.add('dog-walking');
+                dogElement.classList.remove('dog-sitting');
+                
+                // Posición inicial aleatoria
+                dogX = Math.random() * (window.innerWidth - 100);
+                dogY = Math.random() * (window.innerHeight - 100);
+                
+                // Objetivo inicial aleatorio
+                generateRandomTarget();
+            }
+        }
+
+        function callDog() {
+            if (!dogActive || isSitting || isDragging) return;
+            followingCursor = true;
+            goingToBone = false; // Cancelar ir al hueso si estaba yendo
+        }
+
+        function toggleSit() {
+            if (!dogActive) return;
+            
+            isSitting = !isSitting;
+            
+            if (isSitting) {
+                // Sentarse
+                followingCursor = false;
+                goingToBone = false;
+                dogElement.classList.remove('dog-walking');
+                dogElement.classList.add('dog-sitting');
+            } else {
+                // Levantarse
+                dogElement.classList.remove('dog-sitting');
+                dogElement.classList.add('dog-walking');
+                generateRandomTarget();
+            }
+        }
+
+        function feedDog() {
+            if (!dogActive || isSitting || currentBone) return; // No dar comida si ya hay un hueso
+            
+            // Crear hueso en posición aleatoria
+            const bone = document.createElement('div');
+            bone.className = 'bone';
+            bone.innerHTML = '🦴';
+            
+            // Posición aleatoria pero no muy cerca de los bordes
+            const boneX = 50 + Math.random() * (window.innerWidth - 150);
+            const boneY = 50 + Math.random() * (window.innerHeight - 150);
+            
+            bone.style.left = boneX + 'px';
+            bone.style.top = boneY + 'px';
+            
+            document.body.appendChild(bone);
+            currentBone = bone;
+            
+            // El perro va hacia el hueso
+            goingToBone = true;
+            followingCursor = false;
+            targetX = boneX;
+            targetY = boneY;
+        }
+
+        function createHearts() {
+            // Crear varios corazoncitos alrededor del perro
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const heart = document.createElement('div');
+                    heart.className = 'heart';
+                    heart.innerHTML = '💖';
+                    
+                    // Posición alrededor del perro con un poco de variación
+                    const heartX = dogX + 15 + (Math.random() - 0.5) * 30;
+                    const heartY = dogY + 5 + (Math.random() - 0.5) * 20;
+                    
+                    heart.style.left = heartX + 'px';
+                    heart.style.top = heartY + 'px';
+                    
+                    document.body.appendChild(heart);
+                    
+                    // Eliminar el corazoncito después de la animación
+                    setTimeout(() => {
+                        if (heart.parentNode) {
+                            heart.parentNode.removeChild(heart);
+                        }
+                    }, 2000);
+                }, i * 200); // Delay entre corazoncitos
+            }
+        }
+
+        function generateRandomTarget() {
+            targetX = 50 + Math.random() * (window.innerWidth - 150);
+            targetY = 50 + Math.random() * (window.innerHeight - 150);
+        }
+
+        function createPawPrint(x, y) {
+            const pawPrint = document.createElement('div');
+            pawPrint.className = 'paw-prints';
+            pawPrint.style.left = x + 'px';
+            pawPrint.style.top = y + 'px';
+            document.body.appendChild(pawPrint);
+            
+            setTimeout(() => {
+                if (pawPrint.parentNode) {
+                    pawPrint.parentNode.removeChild(pawPrint);
+                }
+            }, 4000);
+        }
+
+        // Eventos de arrastrar - SOLO cuando está sentado
+        dogElement.addEventListener('mousedown', (e) => {
+            if (!dogActive || !isSitting) return; // Solo si está activo Y sentado
+            
+            isDragging = true;
+            dogElement.classList.add('dragging');
+            
+            const rect = dogElement.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // Solo mover si está arrastrando Y sentado
+            if (isDragging && isSitting && dogActive) {
+                const newX = e.clientX - dragOffset.x;
+                const newY = e.clientY - dragOffset.y;
+                
+                // Mantener dentro de la pantalla
+                dogX = Math.max(0, Math.min(window.innerWidth - 48, newX));
+                dogY = Math.max(0, Math.min(window.innerHeight - 40, newY));
+                
+                // Actualizar posición visual inmediatamente
+                dogElement.style.left = dogX + 'px';
+                dogElement.style.top = dogY + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                dogElement.classList.remove('dragging');
+            }
+        });
+
+        // Función principal de animación - SIMPLIFICADA para el arrastre
+        function updateDog() {
+            if (!dogActive) {
+                requestAnimationFrame(updateDog);
+                return;
+            }
+
+            // Si NO se está arrastrando y NO está sentado, hacer movimiento automático
+            if (!isDragging && !isSitting) {
+                // Determinar el objetivo
+                if (followingCursor) {
+                    targetX = mouseX - 24;
+                    targetY = mouseY - 16;
+                } else if (goingToBone && currentBone) {
+                    // Ya está establecido el targetX y targetY hacia el hueso
+                }
+
+                // Velocidad variable: más rápido cuando sigue al cursor o va al hueso
+                const speed = (followingCursor || goingToBone) ? 1.6 : 0.8;
+                const dx = targetX - dogX;
+                const dy = targetY - dogY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+
+                if (distance > speed) {
+                    // Moverse hacia el objetivo
+                    dogX += (dx / distance) * speed;
+                    dogY += (dy / distance) * speed;
+
+                    // Crear huellas ocasionalmente (menos frecuente)
+                    if (Math.random() < 0.008) {
+                        createPawPrint(dogX + 20, dogY + 30);
+                    }
+                } else {
+                    // Si llegó al objetivo
+                    if (goingToBone && currentBone) {
+                        // ¡Se comió el hueso!
+                        currentBone.parentNode.removeChild(currentBone);
+                        currentBone = null;
+                        goingToBone = false;
+                        
+                        // Mostrar corazoncitos de agradecimiento
+                        createHearts();
+                        
+                        // Después de un momento, generar nuevo objetivo aleatorio
+                        setTimeout(() => {
+                            if (dogActive && !isSitting && !followingCursor) {
+                                generateRandomTarget();
+                            }
+                        }, 1500);
+                        
+                    } else if (followingCursor) {
+                        // Llegó al cursor pero no hacer nada especial
+                    } else {
+                        // Si llegó al objetivo aleatorio, generar nuevo objetivo
+                        generateRandomTarget();
+                    }
+                }
+
+                // Mantener dentro de la pantalla
+                dogX = Math.max(0, Math.min(window.innerWidth - 48, dogX));
+                dogY = Math.max(0, Math.min(window.innerHeight - 40, dogY));
+
+                // Actualizar posición visual SOLO si no se está arrastrando
+                dogElement.style.left = dogX + 'px';
+                dogElement.style.top = dogY + 'px';
+
+                // Si está siguiendo el cursor y se acerca mucho, dejar de seguirlo después de un tiempo
+                if (followingCursor && distance < 50) {
+                    setTimeout(() => {
+                        if (!isSitting && !isDragging && dogActive) {
+                            followingCursor = false;
+                            generateRandomTarget();
+                        }
+                    }, 3000); // Esperar más tiempo antes de dejar de seguir
+                }
+            }
+
+            requestAnimationFrame(updateDog);
+        }
+
+        // Variables para detectar doble clic
+        let clickCount = 0;
+        let clickTimer = null;
+
+        // Evento de clic en el perro - ahora maneja tanto clic simple como doble clic
+        dogElement.addEventListener('click', (e) => {
+            if (!dogActive) return;
+            
+            clickCount++;
+            
+            if (clickCount === 1) {
+                // Primer clic - esperar a ver si hay un segundo clic
+                clickTimer = setTimeout(() => {
+                    // Solo un clic - comportamiento original
+                    if (!isSitting) {
+                        followingCursor = false;
+                        generateRandomTarget();
+                    }
+                    clickCount = 0;
+                }, 300); // Esperar 300ms para detectar doble clic
+            } else if (clickCount === 2) {
+                // Doble clic detectado
+                clearTimeout(clickTimer);
+                clickCount = 0;
+                
+                // Ejecutar la función de sentarse/levantarse
+                toggleSit();
+                
+                // Prevenir el comportamiento del clic simple
+                e.preventDefault();
+            }
+        });
+
+        // Cambiar objetivo aleatoriamente cada cierto tiempo (menos frecuente)
+        setInterval(() => {
+            if (dogActive && !followingCursor && !isSitting) {
+                // 15% de probabilidad de cambiar de dirección (menos frecuente)
+                if (Math.random() < 0.15) {
+                    generateRandomTarget();
+                }
+            }
+        }, 5000); // Cambiar cada 5 segundos en lugar de 3
+
+        // Iniciar la animación
+        updateDog();
+
+        // Registrar Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('Service Worker registrado correctamente');
+                    })
+                    .catch(function(error) {
+                        console.log('Error al registrar Service Worker:', error);
+                    });
+            });
+        }
+
+        // Manejar instalación de PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Opcional: mostrar botón de instalación personalizado
+            console.log('PWA puede ser instalada');
+        });
+    </script>
+</body>
+</html>
